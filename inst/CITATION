@@ -1,0 +1,10 @@
+citHeader("To cite glycoPathDesign in publications, use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "glycoPathDesign: Design Glycoform Panels for Biosynthetic Pathway Inference",
+  author = person("Yusuke", "Matsui"),
+  year = "2026",
+  note = "R package version 0.5.0",
+  url = "https://github.com/matsui-lab/glycoPathDesign"
+)

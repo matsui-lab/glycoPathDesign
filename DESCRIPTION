@@ -1,0 +1,39 @@
+Package: glycoPathDesign
+Type: Package
+Title: Design Glycoform Panels for Biosynthetic Pathway Inference
+Version: 0.5.0
+Authors@R: c(
+    person("Yusuke", "Matsui", email = "matsui.yusuke.d4@f.mail.nagoya-u.ac.jp",
+           role = c("aut", "cre")))
+Description: Defines glycoform biosynthetic reaction networks and evaluates
+    whether proposed measurement panels can distinguish specified effective
+    reaction-rate classes. The package provides steady-state forward models,
+    local log-rate Jacobians, panel-dimension and rank checks, conditioning and
+    measurement-precision diagnostics, panel enumeration and optimisation,
+    forward-model fitting, operating-point robustness analysis, supported-
+    resolution summaries, and an optional Shiny application. Results are local
+    and conditional on the supplied network, observation mapping, operating
+    points, secretion model, and measurement-error assumptions.
+License: MIT + file LICENSE
+URL: https://github.com/matsui-lab/glycoPathDesign
+BugReports: https://github.com/matsui-lab/glycoPathDesign/issues
+Encoding: UTF-8
+Depends: R (>= 4.2.0)
+Imports:
+    graphics,
+    grDevices,
+    stats,
+    utils
+Suggests:
+    DT,
+    htmltools,
+    igraph,
+    jsonlite,
+    knitr,
+    rmarkdown,
+    shiny,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

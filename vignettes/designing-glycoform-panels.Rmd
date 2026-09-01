@@ -1,0 +1,102 @@
+---
+title: "Designing glycoform panels for biosynthetic-pathway inference"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Designing glycoform panels for biosynthetic-pathway inference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## The design question
+
+A measured composition of $m$ glycoform classes has at most $m-1$ independent
+directions because the proportions sum to one. That dimension bound is
+necessary but not sufficient to recover $k$ specified biosynthetic rate
+directions. Their local response patterns must also be linearly independent,
+well conditioned, and large enough relative to assay noise. Finally, the
+forward model must adequately represent the observed composition.
+
+`glycoPathDesign` keeps these requirements separate.
+
+## Define the biochemical claim
+
+```{r}
+library(glycoPathDesign)
+pathway <- canonical_pathway()
+pathway
+```
+
+Each edge belongs to an effective `rate_class`. Edges with the same class share
+one parameter. This grouping defines the biological distinctions being tested;
+changing it changes the inverse problem.
+
+## Audit a proposed measurement
+
+```{r}
+panel <- c("M9", "M8", "M5", "M5Gn", "M3Gn",
+           "M3Gn2", "M3Gn3", "G1", "G2S1")
+audit <- check_panel(pathway, panel, target_sd = 0.25, assay_cv = 0.01)
+audit
+```
+
+The log-rate Jacobian $J$ contains the local change in every measured
+composition component caused by each log effective rate. Full column rank means
+that those rate directions have distinct local signatures. The condition number
+is the ratio between the strongest and weakest singular directions. The
+amplification factor $g$ incorporates the stated compositional error model and
+gives the worst-direction relation
+
+$$
+\mathrm{SD}(\log r) \approx g\,\mathrm{CV}(y).
+$$
+
+Thus the maximum admissible assay CV for a target log-rate SD is
+`target_sd / g`.
+
+## Check more than one operating point
+
+Local rank and conditioning can change with the effective rates. A design
+should therefore be tested over a scientifically plausible set of operating
+points.
+
+```{r}
+robust <- check_operating_points(pathway, panel, n = 25, log_rate_sd = 0.5, seed = 1)
+robust
+```
+
+The sampling distribution is part of the scientific assumption and should be
+reported. A random robustness sample is not an exhaustive global proof.
+
+## Search candidate panels
+
+The following deliberately restricts the candidate set so that the vignette is
+quick to build.
+
+```{r}
+candidate_classes <- c(panel, "G2", "G1F")
+sets <- enumerate_panels(pathway, 9, candidates = candidate_classes,
+                         max_panels = 200, seed = 1)
+sets
+optimise_panels(sets, n = 5)
+```
+
+When all combinations are evaluated, the result can establish panel minimality
+for that candidate set, graph, operating point, and numerical rank tolerance.
+When combinations are sampled, the object explicitly records `sampled = TRUE`.
+
+## Fit is a separate requirement
+
+```{r}
+observed <- read.csv(system.file("extdata", "example_observed.csv",
+                                 package = "glycoPathDesign"))
+fit <- fit_pathway(pathway, observed, n_starts = 2)
+fit
+```
+
+A good fit shows that the pathway has capacity to represent the composition. It
+does not by itself show that individual effective rate classes are recoverable;
+the audit at the fitted operating point provides that second assessment.
