@@ -7,16 +7,134 @@ test_that("design-first Shiny interface and canonical SNFG cards are bundled", {
   expect_match(app_text, "Registered N-glycan reactions", fixed = TRUE)
   expect_match(app_text, "Custom definitions", fixed = TRUE)
   expect_match(app_text, "registered_reaction_choices", fixed = TRUE)
-  expect_match(app_text, "add_registered_reaction", fixed = TRUE)
-  expect_match(app_text, "add_custom_reaction", fixed = TRUE)
+  expect_match(app_text, "add_reaction", fixed = TRUE)
+  expect_match(app_text, "registered_fields", fixed = TRUE)
   expect_match(app_text, "Measured class", fixed = TRUE)
   expect_match(app_text, "Upload CSV", fixed = TRUE)
   expect_match(app_text, "Panel dimension", fixed = TRUE)
   expect_match(app_text, "Forward-model fit", fixed = TRUE)
-  expect_match(app_text, "Robustness & fit", fixed = TRUE)
+  expect_match(app_text, 'tabPanel("Robustness & fit", value = "advanced"', fixed = TRUE)
 
   card_directory <- system.file("shiny", "www", "snfg_cards", package = "glycoPathDesign")
   cards <- list.files(card_directory, pattern = "[.]png$", full.names = FALSE)
   expect_equal(length(cards), 22)
   expect_setequal(sub("[.]png$", "", cards), canonical_pathway()$observed_classes)
+})
+
+test_that("both builder modes append to one pathway and preserve state settings", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("DT")
+  app_env <- new.env()
+  sys.source(system.file("shiny", "app.R", package = "glycoPathDesign"), envir = app_env)
+
+  shiny::testServer(app_env$server, {
+    session$setInputs(pathway_source = "builder", builder_input_mode = "guided",
+                     registered_reaction = "1")
+    session$setInputs(clear_reactions = 1)
+    session$setInputs(add_reaction = 1)
+    expect_equal(reaction_rows()$From, "M9")
+    expect_equal(reaction_rows()$To, "M8")
+
+    session$setInputs(builder_input_mode = "custom", custom_from = " M8 ",
+                     custom_to = "custom_product", custom_rate_class = "custom_rate",
+                     custom_weight = 2)
+    expect_equal(nrow(reaction_rows()), 1L)
+    preview <- pending_reaction()
+    session$setInputs(add_reaction = 2)
+    expect_equal(reaction_rows()[2, ], preview, ignore_attr = TRUE)
+    session$setInputs(add_reaction = 3)
+    expect_equal(nrow(reaction_rows()), 2L)
+
+    initial_states <- state_rows()
+    session$setInputs(state_editor_cell_edit = list(row = 1, col = 1, value = " pooled "))
+    expect_equal(state_rows()[["Measured class"]][1], "pooled")
+    expect_equal(state_rows()$Entry, initial_states$Entry)
+    expect_equal(state_rows()$Secretion, initial_states$Secretion)
+    session$setInputs(boundary_editor_cell_edit = list(row = 1, col = 1, value = "2"))
+    session$setInputs(boundary_editor_cell_edit = list(row = 2, col = 2, value = "0.8"))
+    expect_equal(state_rows()$Entry[1], 2)
+    expect_equal(state_rows()$Secretion[2], 0.8)
+    expect_equal(builder_pathway()$observations$glycoform[1], "pooled")
+
+    session$setInputs(builder_input_mode = "guided", registered_reaction = "2")
+    expect_equal(nrow(reaction_rows()), 2L)
+    session$setInputs(add_reaction = 4)
+    expect_equal(nrow(reaction_rows()), 3L)
+    expect_equal(state_rows()[["Measured class"]][1], "pooled")
+    expect_equal(state_rows()$Entry[1], 2)
+    session$setInputs(builder_input_mode = "custom", custom_from = "same",
+                     custom_to = "same", add_reaction = 5)
+    expect_equal(nrow(reaction_rows()), 3L)
+    session$setInputs(reset_builder = 1)
+    expected <- app_env$default_builder_states()
+    restored <- state_rows()[match(expected$State, state_rows()$State), , drop = FALSE]
+    rownames(restored) <- NULL
+    expect_equal(restored, expected)
+  })
+})
+
+
+test_that("Fit uses observed glycoforms independently of the design panel", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("DT")
+  app_env <- new.env()
+  sys.source(system.file("shiny", "app.R", package = "glycoPathDesign"), envir = app_env)
+  csv <- tempfile(fileext = ".csv")
+  on.exit(unlink(csv))
+  observed <- data.frame(glycoform = c("M9", "M8", "M7"), proportion = c(0.5, 0.3, 0.2))
+  write.csv(observed, csv, row.names = FALSE)
+  shiny::testServer(app_env$server, {
+    session$setInputs(pathway_source = "canonical", fit_starts = 1,
+                      glycoforms = c("G1", "G2"), run_fit = 0)
+    session$setInputs(observed_file = data.frame(name = "observed.csv", datapath = csv), run_fit = 1)
+    expect_setequal(names(fitted()$observed), observed$glycoform)
+    expect_equal(unname(fitted()$observed), observed$proportion)
+    session$setInputs(glycoforms = c("M5", "M5Gn"), run_fit = 2)
+    expect_setequal(names(fitted()$observed), observed$glycoform)
+    expect_false(is.null(current_fit()))
+    csv2 <- tempfile(fileext = ".csv")
+    write.csv(transform(observed, proportion = c(.2, .3, .5)), csv2, row.names = FALSE)
+    session$setInputs(observed_file = data.frame(name = "new.csv", datapath = csv2))
+    expect_null(current_fit())
+    session$setInputs(run_fit = 3)
+    expect_equal(unname(current_fit()$observed), c(.2,.3,.5))
+    unlink(csv2)
+  })
+})
+
+test_that("pathway maps preserve all nodes and edges and map pooled measurements", {
+  skip_if_not_installed("shiny")
+  app_env <- new.env()
+  sys.source(system.file("shiny", "app.R", package = "glycoPathDesign"), envir = app_env)
+  p <- canonical_pathway()
+  xy <- app_env$pathway_map_coordinates(p, TRUE)
+  expect_setequal(rownames(xy), p$nodes$id)
+  rendered <- as.character(app_env$pathway_map_svg(p, xy, "MAN1", "M5", TRUE))
+  expect_equal(lengths(regmatches(rendered, gregexpr('class="map-edge selected"', rendered, fixed=TRUE))), 4L)
+  expect_equal(lengths(regmatches(rendered, gregexpr('class="map-node measured"', rendered, fixed=TRUE))), 1L)
+  p <- glyco_pathway(data.frame(id=c("A", "B", "C")),
+    data.frame(from=c("A","B"),to=c("B","C"),rate_class=c("r1","r2")),
+    observations=data.frame(node=c("A","B","C"),glycoform=c("pooled","pooled","C")))
+  xy <- app_env$pathway_map_coordinates(p)
+  rendered <- as.character(app_env$pathway_map_svg(p, xy, "r1", "pooled"))
+  expect_equal(lengths(regmatches(rendered, gregexpr('class="map-node measured"', rendered, fixed=TRUE))), 2L)
+  expect_false(grepl('snfg_cards', rendered, fixed=TRUE))
+  expect_true(all(is.finite(xy)))
+  expect_equal(app_env$pathway_map_coordinates(p), xy)
+})
+
+test_that("Fit estimates the displayed example without an upload", {
+  skip_if_not_installed("shiny")
+  app_env <- new.env()
+  sys.source(system.file("shiny", "app.R", package = "glycoPathDesign"), envir = app_env)
+  shiny::testServer(app_env$server, {
+    session$setInputs(pathway_source = "canonical", fit_starts = 1, run_fit = 0)
+    expect_null(current_fit())
+    session$setInputs(run_fit = 1)
+    x <- current_fit()
+    expect_true(x$is_example)
+    expect_equal(x$input_data, fit_display_data())
+    expect_equal(unname(x$rates), rep(1, length(pathway()$rate_classes)), tolerance = 1e-5)
+    expect_equal(unname(x$predicted), unname(x$observed), tolerance = 1e-7)
+  })
 })
