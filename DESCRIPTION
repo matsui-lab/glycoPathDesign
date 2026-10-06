@@ -16,7 +16,7 @@ Description: Defines glycoform biosynthetic reaction networks and evaluates
     points, secretion model, and measurement-error assumptions.
 License: MIT + file LICENSE
 URL: https://github.com/matsui-lab/glycoPathDesign,
-    https://133.6.53.210:33939/glycoPathDesign/,
+    https://igcore.cloud/glycoPathDesign/,
     https://doi.org/10.5281/zenodo.23176011
 BugReports: https://github.com/matsui-lab/glycoPathDesign/issues
 Encoding: UTF-8

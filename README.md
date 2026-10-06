@@ -17,7 +17,7 @@ aggregation of multiple latent states into a measured glycoform class.
 
 ## Use the web application
 
-Open [glycoPathDesign](https://133.6.53.210:33939/glycoPathDesign/) in a browser. No login or local R installation is required. The web app includes the pathway guide, measurement design checks, and forward-model fitting.
+Open [glycoPathDesign](https://igcore.cloud/glycoPathDesign/) in a browser. No login or local R installation is required. The web app includes the pathway guide, measurement design checks, and forward-model fitting.
 
 ## Archived source and citation
 
@@ -145,7 +145,7 @@ run_app()
 For a server process, use `run_app(host = "0.0.0.0", port = 3838,
 launch.browser = FALSE)` behind the server's HTTPS endpoint. The package
 source includes `deploy/app.R` for Shiny Server or another R-capable host.
-The hosted application is available at https://133.6.53.210:33939/glycoPathDesign/.
+The hosted application is available at https://igcore.cloud/glycoPathDesign/.
 
 The main screen accepts either the manuscript example or a user-supplied
 pathway and places the design inputs beside one decision table. Users choose the
