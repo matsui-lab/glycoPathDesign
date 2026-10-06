@@ -1,3 +1,11 @@
+# glycoPathDesign 0.6.0
+
+- Adds the pathway input and visual guide.
+- Separates fitted rates from fixed reference rates and displays pooled measurement totals once.
+- Preserves distinct parallel and reverse reaction paths in the pathway diagram.
+- Recognises starting solutions at floating-point precision, including CSV round trips, while retaining real nonconvergence warnings.
+- Adds installation and Shiny launch instructions for the manuscript companion.
+
 # glycoPathDesign 0.5.0
 
 - Replaced free-form editing as the default pathway-building workflow with a

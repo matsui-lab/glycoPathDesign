@@ -73,7 +73,18 @@ fit_pathway <- function(pathway, observed, panel = NULL, start = NULL,
                                          rep(upper, each = n_starts - 1L)),
                             nrow = n_starts - 1L, byrow = FALSE)
   }
+  # Bound round-off in the squared residuals on the selected loss scale.
+  loss_scale <- if (loss == "composition") observed else log(observed + pseudocount)
+  roundoff_bound <- sum((8 * .Machine$double.eps * pmax(1, abs(loss_scale)))^2)
   fits <- lapply(seq_len(n_starts), function(i) {
+    # An objective at floating-point precision attains the numerical lower
+    # bound. Avoid a finite-difference line search there; this says
+    # nothing about uniqueness, which is assessed separately by the audit.
+    initial_value <- objective(starts[i, ])
+    if (is.finite(initial_value) && initial_value <= roundoff_bound) {
+      return(list(par = starts[i, ], value = initial_value, convergence = 0L,
+                  message = "Fit at starting values matches within floating-point precision."))
+    }
     stats::optim(starts[i, ], objective, method = "L-BFGS-B", lower = lower,
                  upper = upper, control = control)
   })

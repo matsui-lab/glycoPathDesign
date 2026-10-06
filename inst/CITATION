@@ -5,6 +5,6 @@ bibentry(
   title = "glycoPathDesign: Design Glycoform Panels for Biosynthetic Pathway Inference",
   author = person("Yusuke", "Matsui"),
   year = "2026",
-  note = "R package version 0.5.0",
+  note = "R package version 0.6.0",
   url = "https://github.com/matsui-lab/glycoPathDesign"
 )

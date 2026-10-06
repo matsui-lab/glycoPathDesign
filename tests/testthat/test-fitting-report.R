@@ -18,3 +18,32 @@ test_that("reports can be written in portable formats", {
   expect_true(file.exists(write_design_report(audit, html)))
   expect_match(paste(readLines(html), collapse = " "), "conditional")
 })
+
+test_that("exact starting solutions converge without hiding real optimiser failures", {
+  p <- canonical_pathway()
+  for (loss in c("composition", "log_composition")) {
+    fit <- fit_pathway(p, predict_composition(p), n_starts = 1, loss = loss)
+    expect_equal(fit$objective, 0)
+    expect_equal(fit$convergence, 0L)
+    expect_equal(unname(fit$rates), rep(1, length(p$rate_classes)))
+  }
+  truth <- setNames(rep(.7, length(p$rate_classes)), p$rate_classes)
+  failed <- fit_pathway(p, predict_composition(p, truth), n_starts = 1,
+                        control = list(maxit = 0))
+  expect_gt(failed$objective, 0)
+  expect_true(failed$convergence != 0L)
+})
+
+
+test_that("CSV round-off at an exact starting solution does not cause false failure", {
+  p <- canonical_pathway()
+  f <- tempfile(fileext = ".csv")
+  y <- predict_composition(p)
+  write.csv(data.frame(glycoform = names(y), proportion = as.numeric(y)), f, row.names = FALSE)
+  for (loss in c("composition", "log_composition")) {
+    fit <- fit_pathway(p, read.csv(f), n_starts = 1, loss = loss)
+    expect_equal(fit$convergence, 0L)
+    expect_lt(fit$objective, 1e-25)
+    expect_equal(unname(fit$rates), rep(1, length(p$rate_classes)))
+  }
+})
